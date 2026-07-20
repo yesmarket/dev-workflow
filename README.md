@@ -22,6 +22,17 @@ A Claude Code plugin packaging a git & pull-request workflow: commit, open/revie
 
 `/review-pr` orchestrates: it fans out to both subagents in parallel, merges findings, and handles the human-in-the-loop posting to Azure DevOps.
 
+## Prerequisites
+
+Install these once per machine before enabling the plugin:
+
+- **Node.js 18+ / `npx`** — both bundled MCP servers launch via `npx`, and several commands shell out to `npm`.
+- **git** — used by every command.
+- **Azure CLI (`az`)** — the azure-devops MCP server authenticates with `-a azcli`, so run `az login` once. Used by `/submit-pr` and `/review-pr`.
+- **Snyk auth** — the Snyk MCP server runs via `npx` (no global install needed), but you must authenticate: run `snyk auth` (or `npx snyk auth`), or export `SNYK_API` (and optionally `SNYK_CFG_ORG`) in your shell. Used by `/snyk-sca` and the security reviewer.
+- **SonarQube** — install the `sonarqube@claude-plugins-official` plugin and run its **`sonar-integrate`** skill. That installs the **`sonar` CLI** (which backs the SonarQube MCP server) and writes a `.sonarlint/connectedMode.json` with the project key. Note the reviewers *read existing analysis* over MCP — the branch/PR must already have been analysed by your CI (via `sonar-scanner`, or the Gradle/Maven Sonar plugin). No local scan is run. Used by `/review-pr`.
+- **A per-repo build/test toolchain** — `/commit` and the quality reviewer run the project's build and unit tests, so the relevant tool must be present in each repo you use them in (e.g. `./gradlew`, `mvn`, `npm`, `cargo`, `go`, `dotnet`).
+
 ## MCP servers
 
 This plugin **bundles** two MCP servers in `.mcp.json`. No secrets are committed — each teammate authenticates themselves:
