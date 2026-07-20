@@ -1,14 +1,14 @@
 ---
 description: Build, test, then stage/commit (Conventional Commits) and optionally push — moving off protected branches first
 argument-hint: [optional scope or summary hint]
-allowed-tools: AskUserQuestion, Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git switch:*), Bash(git checkout:*), Bash(git rev-parse:*), Bash(./gradlew:*), Bash(gradle:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(mvn:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(pytest:*), Bash(python:*), Bash(python3:*), Bash(dotnet:*)
+allowed-tools: AskUserQuestion, Bash(command ls:*), Bash(ls:*), Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git switch:*), Bash(git checkout:*), Bash(git rev-parse:*), Bash(./gradlew:*), Bash(gradle:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(mvn:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(pytest:*), Bash(python:*), Bash(python3:*), Bash(dotnet:*)
 ---
 
 ## Context
 - Current branch: !`git branch --show-current`
 - Recent commits: !`git log --oneline -5`
 - Git status: !`git status --porcelain=v1`
-- Build files present: !`for f in gradlew build.gradle build.gradle.kts settings.gradle settings.gradle.kts pom.xml package.json yarn.lock pnpm-lock.yaml Cargo.toml go.mod pyproject.toml setup.py Makefile *.sln *.csproj; do [ -e "$f" ] && echo "$f"; done`
+- Repo root files: !`command ls -1`
 - Diff vs HEAD: !`git diff HEAD`
 
 ## Task
@@ -16,7 +16,7 @@ allowed-tools: AskUserQuestion, Bash(git add:*), Bash(git status:*), Bash(git di
 Work through these steps **in order**. Report the outcome (✅/❌) of each. If a step fails, **stop** and report — do not continue to later steps.
 
 ### 1. Build & unit tests (gate — must pass before committing)
-Auto-detect the build system from "Build files present" above and run its build + unit tests. If `CLAUDE.md` documents specific build/test commands, prefer those. Common mappings:
+Auto-detect the build system from "Repo root files" above and run its build + unit tests. If `CLAUDE.md` documents specific build/test commands, prefer those. Common mappings:
 
 | Detected | Command |
 |---|---|
@@ -31,10 +31,9 @@ Auto-detect the build system from "Build files present" above and run its build 
 If **no** recognizable build system is found, note that and continue (nothing to gate on). If the build or tests **fail**, stop and report the failure — do not commit.
 
 ### 2. Move off a protected/shared branch if needed
-If the current branch is a shared/long-lived branch — `main`, `master`, `develop`, `dev`, `sit`, `uat`, `prod`, `staging`, `preprod`, `production`, or matches `release/*` — do **not** commit to it. Instead:
-- Propose a feature branch name derived from the diff and `$ARGUMENTS` (e.g. `feature/short-kebab-summary`).
-- Use `AskUserQuestion` to confirm the name (offer the suggestion as an option; the user can type their own via "Other").
-- Create and switch with `git switch -c <name>`. **No stash needed** — uncommitted work follows you to the new branch.
+If the current branch is a shared/long-lived branch — `main`, `master`, `develop`, `dev`, `sit`, `uat`, `prod`, `staging`, `preprod`, `production`, or matches `release/*` — it *may* be protected, so don't assume. Use `AskUserQuestion` to ask how to proceed, offering two choices:
+- **Create a feature branch** (recommended default) — propose a name derived from the diff and `$ARGUMENTS` (e.g. `feature/short-kebab-summary`); the user can confirm the suggestion or type their own via "Other". Create and switch with `git switch -c <name>`. **No stash needed** — uncommitted work follows you to the new branch.
+- **Commit directly to `<branch>`** — for personal/unprotected repos; stay on the current branch and continue.
 
 If already on a feature branch, skip this step.
 

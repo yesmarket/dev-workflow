@@ -1,5 +1,6 @@
 ---
-description: Fix high and critical Snyk SCA vulns in third-party deps
+description: Fix Snyk SCA vulns in third-party deps at a chosen severity threshold (default high + critical)
+argument-hint: "[severity] [scope]  e.g. high  |  medium  |  critical some/subdir"
 allowed-tools: Bash, Read, Edit
 ---
 
@@ -13,14 +14,20 @@ Directory.Packages.props, etc.).
 Do NOT run Snyk SAST (`snyk_code_scan`). This task is exclusively about
 third-party dependency vulnerabilities, not first-party source code.
 
-Use `--severity-threshold=high` so only **high and critical** severity
-issues are reported. Ignore medium and low.
+**Severity threshold.** Parse `$ARGUMENTS`: if the first token is one of
+`low`, `medium`, `high`, or `critical`, use it as the threshold; otherwise
+default to **`high`**. Any remaining text is the optional scope (below). Pass
+the threshold to `snyk_sca_scan` as `--severity-threshold=<severity>`, which
+reports that level **and everything more severe** (Snyk's scale is
+`critical > high > medium > low`). So the default `high` reports **high and
+critical**; `medium` reports medium, high, and critical; and so on. Ignore
+anything below the threshold.
 
 If the current working directory is not yet trusted by Snyk, trust it and
 proceed with the scan.
 
-For each high or critical finding, classify the required version bump
-using semver:
+For each finding at or above the threshold, classify the required version
+bump using semver:
 
 - **Patch bump** (e.g. 1.2.3 → 1.2.4) — apply automatically.
 - **Minor bump** (e.g. 1.2.3 → 1.3.0) — apply automatically.
@@ -49,11 +56,12 @@ For each fix you apply automatically:
 3. Do NOT modify any first-party source code as part of this task.
 
 After all auto-applied (patch + minor) fixes are in place, re-run
-`snyk_sca_scan` with `--severity-threshold=high` to verify the issues
+`snyk_sca_scan` with the **same** `--severity-threshold` to verify the issues
 are resolved. Report:
-- Before/after counts of high and critical issues
+- Before/after issue counts at the chosen threshold (broken down by severity)
 - Any auto-applied fixes
 - Any major-bump fixes pending your approval
 - Any issues that could not be fixed (e.g. no patched version available)
 
-Optional scope: $ARGUMENTS
+Optional scope (any text in `$ARGUMENTS` after an optional leading severity
+token): $ARGUMENTS
