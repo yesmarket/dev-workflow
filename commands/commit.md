@@ -1,19 +1,23 @@
 ---
 description: Build, test, then stage/commit (Conventional Commits) and optionally push — moving off protected branches first
 argument-hint: [optional scope or summary hint]
-allowed-tools: AskUserQuestion, Bash(command ls:*), Bash(ls:*), Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git switch:*), Bash(git checkout:*), Bash(git rev-parse:*), Bash(./gradlew:*), Bash(gradle:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(mvn:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(pytest:*), Bash(python:*), Bash(python3:*), Bash(dotnet:*)
+allowed-tools: AskUserQuestion, Bash(command ls:*), Bash(ls:*), Bash(true:*), Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git switch:*), Bash(git checkout:*), Bash(git rev-parse:*), Bash(./gradlew:*), Bash(gradle:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(mvn:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(pytest:*), Bash(python:*), Bash(python3:*), Bash(dotnet:*)
 ---
 
 ## Context
-- Current branch: !`git branch --show-current`
-- Recent commits: !`git log --oneline -5`
-- Git status: !`git status --porcelain=v1`
+- Inside a git repo? !`git rev-parse --is-inside-work-tree 2>&1 || true`
+- Current branch: !`git branch --show-current 2>&1 || true`
+- Recent commits: !`git log --oneline -5 2>&1 || true`
+- Git status: !`git status --porcelain=v1 2>&1 || true`
 - Repo root files: !`command ls -1`
-- Diff vs HEAD: !`git diff HEAD`
+- Diff vs HEAD: !`git diff HEAD 2>&1 || true`
 
 ## Task
 
 Work through these steps **in order**. Report the outcome (✅/❌) of each. If a step fails, **stop** and report — do not continue to later steps.
+
+### 0. Verify this is a git repository (gate)
+If "Inside a git repo?" above is not `true` (e.g. it shows `fatal: not a git repository`), **stop immediately**: tell the user the current directory is not a git repository and ask them to run `/commit` from inside one (or run `git init` first). Do **not** run any further steps.
 
 ### 1. Build & unit tests (gate — must pass before committing)
 Auto-detect the build system from "Repo root files" above and run its build + unit tests. If `CLAUDE.md` documents specific build/test commands, prefer those. Common mappings:
