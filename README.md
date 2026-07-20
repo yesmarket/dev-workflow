@@ -22,14 +22,17 @@ A Claude Code plugin packaging a git & pull-request workflow: commit, open/revie
 
 `/review-pr` orchestrates: it fans out to both subagents in parallel, merges findings, and handles the human-in-the-loop posting to Azure DevOps.
 
-## Required MCP servers
+## MCP servers
 
-These commands/agents call tools from MCP servers that must be configured on the user's machine (this plugin does not bundle server credentials):
+This plugin **bundles** two MCP servers in `.mcp.json`. No secrets are committed — each teammate authenticates themselves:
 
-- **azure-devops** — `/submit-pr`, `/review-pr`
-- **sonarqube** — `/review-pr` (both reviewers)
-- **Snyk** — `/review-pr` (security reviewer), `/snyk-sca`
-- **Atlassian (Rovo)** — `/review-pr` acceptance-criteria check (optional; skipped if absent)
+- **azure-devops** — used by `/submit-pr` and `/review-pr`. Runs `npx -y @azure-devops/mcp flexigroup -a azcli`, so it authenticates via the Azure CLI: run `az login` once. (`flexigroup` is the ADO org — edit `.mcp.json` if yours differs.)
+- **Snyk** — used by `/snyk-sca` and the security reviewer. Runs `npx -y snyk@latest mcp -t stdio`; authenticate with `snyk auth`, or export `SNYK_API` (and optionally `SNYK_CFG_ORG`) in your shell (the server inherits it).
+
+Two more servers are **prerequisites** you set up separately (deliberately not bundled):
+
+- **sonarqube** — used by `/review-pr` (both reviewers). Provided by the `sonarqube@claude-plugins-official` plugin: install it and run its `sonar-integrate` skill, which installs the `sonar` CLI and registers the MCP server. Not bundled here to avoid a duplicate/conflicting server definition.
+- **Atlassian (Rovo)** — optional, for the `/review-pr` acceptance-criteria check. Uses the claude.ai Atlassian connector (`mcp__claude_ai_Atlassian_Rovo__*`); skipped silently if absent.
 
 ## Install
 
