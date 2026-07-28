@@ -1,6 +1,6 @@
 # dev-workflow
 
-A Claude Code plugin packaging a git & pull-request workflow: commit, open/review PRs in Azure DevOps, merge safely, and fix dependency vulnerabilities. Bundles a shared PR-review rubric skill and two least-privilege reviewer subagents.
+A Claude Code plugin packaging a git & pull-request workflow: commit, open/review PRs in Azure DevOps, merge safely, and fix dependency vulnerabilities. Bundles a shared PR-review rubric skill and three least-privilege reviewer subagents.
 
 ## What's inside
 
@@ -9,7 +9,7 @@ A Claude Code plugin packaging a git & pull-request workflow: commit, open/revie
 |---|---|
 | `/commit` | Runs build + unit tests, moves off protected branches to a feature branch, commits with a Conventional Commits message (+ Claude co-author trailer), then asks before pushing. |
 | `/submit-pr` | Opens a PR for the current branch in Azure DevOps (via the ADO MCP server). Defaults the target to `develop`, surfaces env branches (dev/sit/uat/prod), always confirms. |
-| `/review-pr <target>` | Reviews the branch's PR against `<target>` using two parallel reviewer subagents, then walks you through each proposed comment one at a time before anything is posted to ADO. |
+| `/review-pr <target>` | Reviews the branch's PR against `<target>` using three parallel reviewer subagents (security, quality, intent), then walks you through each proposed comment one at a time before anything is posted to ADO. |
 | `/safe-merge [branch]` | Merges a branch (default `develop`) into the current branch, resolving conflicts carefully — preserving both sides' intent, stopping to ask on semantic conflicts. Stages but never commits. |
 | `/snyk-sca [severity] [scope]` | Fixes third-party dependency vulnerabilities via Snyk SCA at a chosen `--severity-threshold` (default **high**, i.e. high + critical; pass `medium`/`critical`/etc. to change the floor). Auto-applies patch/minor bumps; stops to ask before major bumps. Does **not** touch first-party code (no SAST). |
 | `/sonar-scan [severity] [type]` | Runs a **local** SonarQube scan of the current branch (so it sees uncommitted work), groups findings into per-type tables (security/hotspots, bugs, code smells, coverage, duplications), then walks you through each one — **nothing is changed automatically**. Severity is a floor (default **high** = high + blocker); optional `type` narrows to one section. |
@@ -17,13 +17,14 @@ A Claude Code plugin packaging a git & pull-request workflow: commit, open/revie
 | `/promote-permissions <path>` | Scans repos under `<path>` for `.claude/settings.local.json` files and promotes safe, generic `permissions.allow` entries into `~/.claude/settings.json` (read-only commands, standard build/test invocations, etc.), so Claude Code stops re-prompting for the same thing in every repo. Flags risky/mutating entries and embedded secrets instead of promoting them. Always confirms before writing. |
 
 ### Skill
-- **`pr-review`** — the shared rubric: severity scale, output contract, tool routing, and the security/quality checklists. Loaded by both reviewer subagents so there is a single source of truth.
+- **`pr-review`** — the shared rubric: severity scale, output contract, tool routing, and the security/quality/intent checklists. Loaded by all three reviewer subagents so there is a single source of truth.
 
 ### Agents (subagents)
 - **`security-reviewer`** — scoped to Snyk + SonarQube security rules + manual diff read. No edit/write, no PR-posting tools.
-- **`quality-reviewer`** — scoped to SonarQube general rules, the test suite, diff coverage, and spec/Jira acceptance-criteria checks. No edit/write, no PR-posting tools.
+- **`quality-reviewer`** — scoped to SonarQube general rules, the test suite, and diff coverage. No edit/write, no PR-posting tools.
+- **`intent-reviewer`** — checks the diff against a speckit spec and/or the related Jira ticket's acceptance criteria (plus any linked Confluence page). No edit/write, no PR-posting tools.
 
-`/review-pr` orchestrates: it fans out to both subagents in parallel, merges findings, and handles the human-in-the-loop posting to Azure DevOps.
+`/review-pr` orchestrates: before dispatching, it resolves the spec/ticket reference for the intent reviewer (speckit spec, else a Jira key derived from the branch name/git tags, else asks you directly), then fans out to all three subagents in parallel, merges findings, and handles the human-in-the-loop posting to Azure DevOps.
 
 ## Prerequisites
 
@@ -35,6 +36,7 @@ Install these once per machine before enabling the plugin:
 - **Snyk auth** — the Snyk MCP server runs via `npx` (no global install needed), but you must authenticate: run `snyk auth` (or `npx snyk auth`), or export `SNYK_API` (and optionally `SNYK_CFG_ORG`) in your shell. Used by `/snyk-sca` and the security reviewer.
 - **SonarQube** — install the `sonarqube@claude-plugins-official` plugin and run its **`sonar-integrate`** skill. That installs the **`sonar` CLI** (which backs the SonarQube MCP server) and writes a `.sonarlint/connectedMode.json` with the project key. `/review-pr`'s reviewers *read existing analysis* over MCP — the branch/PR must already have been analysed by your CI (via `sonar-scanner`, or the Gradle/Maven Sonar plugin). `/sonar-scan`, by contrast, *runs* a local scan, so it additionally needs a working scanner in the repo (a Gradle/Maven Sonar task or `sonar-project.properties`) plus a reachable SonarQube server URL and token in your scanner config/env. Used by `/review-pr` and `/sonar-scan`.
 - **A per-repo build/test toolchain** — `/commit` and the quality reviewer run the project's build and unit tests, so the relevant tool must be present in each repo you use them in (e.g. `./gradlew`, `mvn`, `npm`, `cargo`, `go`, `dotnet`).
+- **Atlassian (Rovo) auth** — optional; only needed for the intent reviewer's Jira/Confluence checks (see below). Skipped silently if not connected.
 
 ## MCP servers
 
@@ -45,8 +47,8 @@ This plugin **bundles** two MCP servers in `.mcp.json`. No secrets are committed
 
 Two more servers are **prerequisites** you set up separately (deliberately not bundled):
 
-- **sonarqube** — used by `/review-pr` (both reviewers) and `/sonar-scan`. Provided by the `sonarqube@claude-plugins-official` plugin: install it and run its `sonar-integrate` skill, which installs the `sonar` CLI and registers the MCP server. Not bundled here to avoid a duplicate/conflicting server definition. `/sonar-scan` also invokes the plugin's `sonar-fix-issue` skill when you choose to fix a finding.
-- **Atlassian (Rovo)** — optional, for the `/review-pr` acceptance-criteria check. Uses the claude.ai Atlassian connector (`mcp__claude_ai_Atlassian_Rovo__*`); skipped silently if absent.
+- **sonarqube** — used by `/review-pr` (security and quality reviewers) and `/sonar-scan`. Provided by the `sonarqube@claude-plugins-official` plugin: install it and run its `sonar-integrate` skill, which installs the `sonar` CLI and registers the MCP server. Not bundled here to avoid a duplicate/conflicting server definition. `/sonar-scan` also invokes the plugin's `sonar-fix-issue` skill when you choose to fix a finding.
+- **Atlassian (Rovo)** — optional, for the `/review-pr` intent reviewer's Jira/Confluence acceptance-criteria check. Uses the claude.ai Atlassian connector (`mcp__claude_ai_Atlassian_Rovo__*`); skipped silently if absent.
 
 ## Install
 

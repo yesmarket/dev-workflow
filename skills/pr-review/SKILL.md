@@ -4,18 +4,19 @@ description: >-
   Rubric, severity scale, tool routing, and output contract for reviewing a
   pull-request (branch) diff. Load this whenever performing a security review
   (injection, secrets in code, authz/permission gaps, unsafe deserialization,
-  insecure input handling, sensitive-data exposure) or a quality review (code
-  smells, complexity, duplication, test suite, diff coverage) of changed code —
-  including when a security or quality review subagent needs the shared checklist
-  and finding format.
+  insecure input handling, sensitive-data exposure), a quality review (code
+  smells, complexity, duplication, test suite, diff coverage), or an intent
+  review (does the change match the speckit spec / Jira acceptance criteria) of
+  changed code — including when a security, quality, or intent review subagent
+  needs the shared checklist and finding format.
 ---
 
 # PR review
 
-Shared rubric for reviewing a pull-request diff. A review is one of two types —
-**security** or **quality** — and each finding records which type produced it.
-Review only the changed lines and the code they directly touch; do not audit the
-whole repository.
+Shared rubric for reviewing a pull-request diff. A review is one of three types —
+**security**, **quality**, or **intent** — and each finding records which type
+produced it. Review only the changed lines and the code they directly touch; do
+not audit the whole repository.
 
 ## Severity scale
 
@@ -34,7 +35,7 @@ Every finding must include all of the following:
 - **File path** — repo-relative path.
 - **Line(s)** — the specific line or line range on the changed diff.
 - **Severity** — one of the five levels above.
-- **Review type** — `security` or `quality` (which review produced it).
+- **Review type** — `security`, `quality`, or `intent` (which review produced it).
 - **Comment text** — the exact text as it would appear on the PR. It must be
   self-contained (understandable without this rubric or the review conversation),
   actionable, and suggest a concrete fix where one is possible.
@@ -79,29 +80,33 @@ Do all of the following:
    `important` finding. Always report the actual percentage. Use
    `mcp__sonarqube__get_file_coverage_details` and
    `mcp__sonarqube__search_files_by_coverage`.
-4. **Spec / acceptance-criteria check** — in this order:
-   - If a **speckit spec** exists for the change, check the implementation
-     against it and flag divergences.
-   - Otherwise, if the **Atlassian Rovo MCP** server is connected (tools
-     prefixed `mcp__claude_ai_Atlassian_Rovo__`), try to find the related Jira
-     ticket and check the change against its acceptance criteria:
-     - **Derive the issue key.** Jira keys look like `ABC-123`. Look for one in
-       the branch name (`git branch --show-current`, e.g.
-       `feature/ABC-123-add-widget`) and in any git tags on the change
-       (`git tag --points-at HEAD`, `git describe --tags --abbrev=0`). Extract
-       the first `[A-Z][A-Z0-9]+-\d+` match.
-     - **Fetch the ticket.** With a key, call
-       `mcp__claude_ai_Atlassian_Rovo__getJiraIssue`. If no key can be derived
-       but the intent is clear, fall back to
-       `mcp__claude_ai_Atlassian_Rovo__searchJiraIssuesUsingJql` (e.g. search
-       recent issues by summary text) to identify the likely ticket.
-     - **Check acceptance criteria.** Read the ticket's description /
-       acceptance-criteria field and flag any divergence between it and the
-       change as a `quality` finding. If the ticket links a Confluence spec,
-       fetch it with `mcp__claude_ai_Atlassian_Rovo__getConfluencePage` and
-       check against that too.
-   - If neither a speckit spec nor a derivable Jira ticket exists, **skip this
-     step silently** (do not emit a finding about the absence of a spec or ticket).
+
+## Intent review
+
+Scope: **does the change actually do what it was supposed to do**, checked
+against a speckit spec and/or the related Jira ticket's acceptance criteria.
+This is not a code-quality or security check — a change can be clean and secure
+while still not implementing what was asked, or silently doing more or less
+than the ticket describes.
+
+The orchestrating command resolves the spec/ticket reference **before**
+dispatching this review — a speckit spec path if one exists, otherwise a Jira
+key (derived from the branch name/git tags, or supplied by the user), otherwise
+an explicit "none". This is handed to you in the context package. Do not
+re-derive it yourself, and if the context package says none was found, **skip
+this review silently** (no finding about the absence of a spec or ticket).
+
+Do the applicable one(s):
+
+1. **Speckit spec** — if a spec path was provided, read it and check the
+   implementation against it. Flag divergences: missing behavior, extra
+   untracked behavior, mismatched contracts.
+2. **Jira ticket** — if a ticket key was provided, fetch it with
+   `mcp__claude_ai_Atlassian_Rovo__getJiraIssue` and check the diff against its
+   description / acceptance-criteria field. If the ticket links a Confluence
+   spec, fetch it with `mcp__claude_ai_Atlassian_Rovo__getConfluencePage` and
+   check against that too.
+3. Report any divergence as a finding with review type `intent`.
 
 ## Shared conventions
 
