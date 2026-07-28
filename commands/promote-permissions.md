@@ -11,7 +11,7 @@ allowed-tools: Bash(find *), Bash(git *), Read, Edit, Grep, Glob, AskUserQuestio
 
 ## Task
 
-Find `permissions.allow` entries repeated across repos' `.claude/settings.local.json` that are generic enough to promote into the user's global `~/.claude/settings.json`, so Claude Code stops re-prompting for the same thing in every repo. Never edit code — this only touches settings files.
+Find `permissions.allow` entries across repos' `.claude/settings.local.json` that are safe and generic enough to promote into the user's global `~/.claude/settings.json`, so Claude Code stops re-prompting for the same thing in every repo. An entry qualifies based on what it is, not how many repos it appears in — a single-repo entry is promoted just the same as one repeated everywhere, as long as it's safe. Never edit code — this only touches settings files.
 
 ### 0. Gate
 If `$ARGUMENTS` is empty or "Discovered local settings files" above is empty/errors, stop and ask the user for a valid path to scan.
@@ -47,7 +47,7 @@ Sort each entry into one of these buckets. Judge by the entry's *content*, not j
 - Any entry with what looks like an embedded credential, token, or API key (e.g. `Authorization: Bearer ...`, API keys in query strings). Call these out by repo and file path so the user can rotate/remove them — do not copy these into global settings under any circumstances, and do not print the secret value itself in your report (redact it).
 
 ### 4. Build the candidate list
-For entries in the "Promote" bucket, dedupe against the global baseline (step 1) — skip anything already globally allowed. For the rest, count how many distinct repos have each entry; entries seen in multiple repos are stronger candidates, but a single-repo entry can still qualify if it's clearly generic (e.g. `Bash(cargo test:*)` seen in only one Rust repo is still fine to promote).
+For entries in the "Promote" bucket, dedupe against the global baseline (step 1) — skip anything already globally allowed. Promote every remaining entry that's genuinely safe and generic per step 3's criteria, regardless of how many repos it showed up in — repeat count across repos is not a gate, it's just context. A single-repo entry like `Bash(cargo test:*)` is just as valid a candidate as one seen in five repos, as long as it's read-only or a standard, non-destructive build/test/tool invocation with no repo-specific content baked in. Note the repo count per entry in your report for the user's information, but don't filter candidates by it.
 
 ### 5. Present findings and confirm
 Show the user:
@@ -60,7 +60,15 @@ Use `AskUserQuestion` to confirm before writing anything: let the user approve t
 ### 6. Apply
 If the user approves any entries:
 - Back up `~/.claude/settings.json` (copy to `~/.claude/settings.json.bak-<repo-scan>` before editing, if not already backed up this session).
-- Edit `~/.claude/settings.json`, appending the approved entries to `permissions.allow`, avoiding duplicates, keeping the existing entries and formatting intact.
+- Merge the approved entries into `permissions.allow`, then rewrite the *entire* array (not just the new entries — the whole thing, so it stays organized as it grows) in this canonical order:
+  1. `Bash(...)` entries — read-only/inspection commands first (`git status`, `git diff *`, `git log *`, `git branch *`, `git show *`, `ls *`, `cat *`, `grep *`, `rg *`, `find *`, `wc *`, `sort *`, `head *`, `tail *`, `sed *`, `awk *`, `echo *`, `uniq *`, `cd *`, `lsof *`, etc.), then build/test/toolchain invocations (`npm *`, `dotnet *`, `gradle`/`./gradlew *`, `cargo *`, `go build/test`, `pytest`, `mvn *`, `java -version`, `docker --version`, etc.), then everything else Bash. Alphabetize within each of these three sub-groups.
+  2. `Read(...)` entries, alphabetized.
+  3. `Skill(...)` entries, alphabetized.
+  4. `WebFetch(...)` / `WebSearch` entries, alphabetized.
+  5. `mcp__<server>__...` entries, grouped by server name (servers alphabetized), tools alphabetized within each server's group.
+  6. Anything not covered above, alphabetized, at the end.
+- Apply the same canonical order to `permissions.ask` and `permissions.deny` too if present, so the whole permissions block reads consistently, not just what you added.
+- Leave every other part of `settings.json` (env, model, enabledPlugins, extraKnownMarketplaces, etc.) untouched.
 
 Ask separately (default: no) whether to also strip the now-redundant entries from each repo's local `settings.local.json`. Only do this if the user explicitly says yes, and only for entries that were actually promoted.
 
