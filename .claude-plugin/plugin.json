@@ -1,6 +1,6 @@
 {
   "name": "dev-workflow",
-  "description": "Git & PR workflow for Claude Code: commit, submit-pr, review-pr, safe-merge, snyk-sca, sonar-scan, promote (env-branching) — with a shared pr-review rubric skill and scoped security/quality reviewer subagents.",
+  "description": "Git & PR workflow for Claude Code: commit, submit-pr, review-pr, safe-merge, snyk-sca, sonar-scan, promote-env (env-branching), promote-permissions — with a shared pr-review rubric skill and scoped security/quality reviewer subagents.",
   "author": {
     "name": "Ryan Bartsch",
     "email": "ryan.bartsch@humm-group.com"

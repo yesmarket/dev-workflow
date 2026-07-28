@@ -113,5 +113,5 @@ Create the PR with `repo_create_pull_request`:
 
 Print: inferred current → target env, the new branch, the commits cherry-picked
 (and any conflicts you resolved), and the PR id + web URL. If there's a further
-env to promote to afterwards, mention that `/promote` can be run again from the
+env to promote to afterwards, mention that `/promote-env` can be run again from the
 new branch.
