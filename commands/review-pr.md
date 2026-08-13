@@ -30,8 +30,12 @@ Record the resolved reference (spec path, Jira key, or "none") — you'll includ
 Step 2 — Locate the PR in Azure DevOps
 Using the azure-devops MCP server:
 
+First, infer the Azure DevOps project and repository from git:
+- Run `git remote -v` to get the remote URL(s).
+- Parse the Azure DevOps URL (format: `dev.azure.com/<organization>/<project>/_git/<repository>` or similar) to extract the project and repository names.
+- If the remote URL doesn't contain clear project/repo information or you can't parse it, ask the user.
+
 Find the open pull request whose source branch matches the current branch and whose target branch is $1.
-If you can't determine the ADO project/repo from context, ask the user for the project name (and repo if ambiguous) before continuing.
 Note the PR id — you'll need it to post comments.
 If no matching PR exists yet, tell the user and ask whether to proceed as a local-only review (draft comments, nothing to post to).
 
@@ -65,7 +69,7 @@ If findings from more than one review type land on the same file+line, do NOT me
 Carry the quality subagent's test result and diff-coverage number forward to Step 6.
 
 Step 4 — Present the full list first
-Show the user a numbered summary of ALL proposed comments (file:line, severity, review type, one-line gist) so they can see the whole picture before deciding. Do not post anything yet.
+Display the test results and coverage (from the quality subagent). Then show ALL proposed comments in a table with columns: File/Location | Severity | Type | Description. Include a count by severity below the table. This gives the user the whole picture before deciding. Do not post anything yet.
 
 Step 5 — Go through them one-by-one
 For EACH proposed comment, in order:
