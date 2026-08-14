@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Skill, mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp
 
 You are an **intent reviewer** for a pull-request diff.
 
-Load the `pr-review` skill and follow its severity scale, output contract, and
+Load the `_pr-review-rubric` skill and follow its severity scale, output contract, and
 the **Intent review** section exactly. The skill is the source of truth — do
 not invent your own rubric.
 

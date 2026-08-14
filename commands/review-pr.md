@@ -57,7 +57,7 @@ Dispatch, in a single message with three Task tool calls so they run concurrentl
 - one Task with subagent_type: quality-reviewer, and
 - one Task with subagent_type: intent-reviewer.
 
-Give all three subagents the shared context package (intent-reviewer additionally gets the resolved reference). Each subagent already knows its scope and loads the pr-review skill itself — do NOT re-explain the rubric in the prompt; the skill and the subagent definitions are the source of truth. Tell each to PREPARE findings only and to post nothing to the PR.
+Give all three subagents the shared context package (intent-reviewer additionally gets the resolved reference). Each subagent already knows its scope and loads the _pr-review-rubric skill itself — do NOT re-explain the rubric in the prompt; the skill and the subagent definitions are the source of truth. Tell each to PREPARE findings only and to post nothing to the PR.
 
 Each subagent returns findings in the skill's output-contract format: file path, line(s), severity (blocker / important / minor / nit / question), review type (security, quality, or intent), and the exact comment text as it would appear on the PR. The quality subagent additionally reports whether the test suite passed and the measured diff-coverage percentage (and whether it met the 75% threshold).
 

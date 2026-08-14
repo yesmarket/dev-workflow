@@ -1,5 +1,5 @@
 ---
-name: pr-review
+name: _pr-review-rubric
 description: >-
   Rubric, severity scale, tool routing, and output contract for reviewing a
   pull-request (branch) diff. Load this whenever performing a security review

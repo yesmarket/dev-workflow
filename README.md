@@ -16,8 +16,8 @@ A Claude Code plugin packaging a git & pull-request workflow: commit, open/revie
 | `/promote-env [target-env]` | Promotes a change up the env-branching ladder `dev→sit→uat→prod`. Infers the env from the branch name, gathers the commits from the previous env's PR, cherry-picks them onto a fresh `feature/…-<env>` branch off the target env, and opens the PR in Azure DevOps. |
 | `/promote-permissions <path>` | Scans repos under `<path>` for `.claude/settings.local.json` files and promotes safe, generic `permissions.allow` entries into `~/.claude/settings.json` (read-only commands, standard build/test invocations, etc.), so Claude Code stops re-prompting for the same thing in every repo. Flags risky/mutating entries and embedded secrets instead of promoting them. Always confirms before writing. |
 
-### Skill
-- **`pr-review`** — the shared rubric: severity scale, output contract, tool routing, and the security/quality/intent checklists. Loaded by all three reviewer subagents so there is a single source of truth.
+### Skill (internal)
+- **`_pr-review-rubric`** — the shared rubric: severity scale, output contract, tool routing, and the security/quality/intent checklists. Loaded by all three reviewer subagents so there is a single source of truth.
 
 ### Agents (subagents)
 - **`security-reviewer`** — scoped to Snyk + SonarQube security rules + manual diff read. No edit/write, no PR-posting tools.
@@ -67,9 +67,9 @@ Or point at this repo directly for local development:
 
 ## Note on the older personal copies
 
-These commands previously lived in `~/.claude/commands/` (and the skill in `~/.claude/skills/pr-review/`). Once this plugin is enabled, delete those personal copies to avoid duplicate/conflicting slash commands:
+These commands previously lived in `~/.claude/commands/` (and the skill in `~/.claude/skills/_pr-review-rubric/`). Once this plugin is enabled, delete those personal copies to avoid duplicate/conflicting slash commands:
 
 ```
 rm ~/.claude/commands/{commit,submit-pr,review-pr,merge-with-conflicts,snyk-scan}.md
-rm -r ~/.claude/skills/pr-review
+rm -r ~/.claude/skills/_pr-review-rubric
 ```
