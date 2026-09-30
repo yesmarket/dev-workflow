@@ -1,6 +1,6 @@
 ---
 description: Build, test, then stage/commit (Conventional Commits) and optionally push — moving off protected branches first
-argument-hint: [optional scope or summary hint]
+argument-hint: [skip-tests] [optional scope or summary hint]
 allowed-tools: AskUserQuestion, Bash(command ls:*), Bash(ls:*), Bash(true:*), Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git switch:*), Bash(git checkout:*), Bash(git rev-parse:*), Bash(./gradlew:*), Bash(gradle:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(mvn:*), Bash(make:*), Bash(cargo:*), Bash(go:*), Bash(pytest:*), Bash(python:*), Bash(python3:*), Bash(dotnet:*)
 ---
 
@@ -20,19 +20,21 @@ Work through these steps **in order**. Report the outcome (✅/❌) of each. If 
 If "Inside a git repo?" above is not `true` (e.g. it shows `fatal: not a git repository`), **stop immediately**: tell the user the current directory is not a git repository and ask them to run `/commit` from inside one (or run `git init` first). Do **not** run any further steps.
 
 ### 1. Build & unit tests (gate — must pass before committing)
-Auto-detect the build system from "Repo root files" above and run its build + unit tests. If `CLAUDE.md` documents specific build/test commands, prefer those. Common mappings:
+Check whether `$ARGUMENTS` contains the token `skip-tests`. If it does, **skip tests** but still run the build; remove `skip-tests` from `$ARGUMENTS` before using the rest as a scope/summary hint in step 4.
 
-| Detected | Command |
-|---|---|
-| `gradlew` / `build.gradle(.kts)` | `./gradlew build` (runs tests) |
-| `pom.xml` | `mvn -B verify` |
-| `package.json` | `npm run build` (if a `build` script exists) then `npm test` — use `yarn`/`pnpm` if that lockfile is present |
-| `Cargo.toml` | `cargo build && cargo test` |
-| `go.mod` | `go build ./... && go test ./...` |
-| `pyproject.toml` / `setup.py` | `pytest` (if available) |
-| `*.sln` / `*.csproj` | `dotnet build && dotnet test` |
+Auto-detect the build system from "Repo root files" above and run its build + unit tests (build only if `skip-tests` was passed). If `CLAUDE.md` documents specific build/test commands, prefer those. Common mappings:
 
-If **no** recognizable build system is found, note that and continue (nothing to gate on). If the build or tests **fail**, stop and report the failure — do not commit.
+| Detected | Command | With `skip-tests` |
+|---|---|---|
+| `gradlew` / `build.gradle(.kts)` | `./gradlew build` (runs tests) | `./gradlew build -x test` |
+| `pom.xml` | `mvn -B verify` | `mvn -B verify -DskipTests` |
+| `package.json` | `npm run build` (if a `build` script exists) then `npm test` — use `yarn`/`pnpm` if that lockfile is present | build only |
+| `Cargo.toml` | `cargo build && cargo test` | `cargo build` |
+| `go.mod` | `go build ./... && go test ./...` | `go build ./...` |
+| `pyproject.toml` / `setup.py` | `pytest` (if available) | nothing to run |
+| `*.sln` / `*.csproj` | `dotnet build && dotnet test` | `dotnet build` |
+
+If **no** recognizable build system is found, note that and continue (nothing to gate on). If the build or tests **fail**, stop and report the failure — do not commit. When tests were skipped, say so explicitly in the step's report (e.g. "⏭️ Tests skipped (skip-tests)").
 
 ### 2. Move off a protected/shared branch if needed
 If the current branch is a shared/long-lived branch — `main`, `master`, `develop`, `dev`, `sit`, `uat`, `prod`, `staging`, `preprod`, `production`, or matches `release/*` — it *may* be protected, so don't assume. Use `AskUserQuestion` to ask how to proceed, offering two choices:
@@ -59,4 +61,4 @@ Use `AskUserQuestion` to ask whether to push to remote now (Yes / No).
 - If no: skip, and remind the user they can push later.
 
 ### 6. Report
-Summarise: which branch you committed to, the commit message, whether tests passed, and push status. If a PR would be the natural next step, mention `/submit-pr`.
+Summarise: which branch you committed to, the commit message, whether tests passed (or were skipped via `skip-tests`), and push status. If a PR would be the natural next step, mention `/submit-pr`.
